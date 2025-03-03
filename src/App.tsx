@@ -8,7 +8,7 @@ import { useYodlAuth } from './hooks/useYodlAuth';
 import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
-import { yodlSDK, runningInYodlIframe, getYodlUserData, getTokenFromUrl, extractUserDataFromToken, isInIframe } from './lib/yodlSDK';
+import { yodlSDK, getTokenFromUrl, extractUserDataFromToken, runningInIframe, isInIframe } from './lib/yodlSDK';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -270,7 +270,7 @@ function App() {
   useEffect(() => {
     async function initializeYodl() {
       console.log('Initializing Yodl integration...');
-      console.log('Running in iframe:', runningInYodlIframe);
+      console.log('Running in iframe:', runningInIframe);
       
       try {
         // First check if we have a token in the URL
@@ -324,7 +324,7 @@ function App() {
       selectedChains,
       isYodlInitialized,
       yodlUserData,
-      inIframe: runningInYodlIframe
+      inIframe: runningInIframe
     });
   }, [companyInfo, selectedTokens, selectedChains, isYodlInitialized, yodlUserData]);
 
