@@ -857,16 +857,17 @@ function App() {
                 show={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
               >
                 <button
-                  onClick={() => setShowCryptoModal(true)}
-                  disabled={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
-                  className={`w-full p-4 md:p-5 rounded-xl md:rounded-2xl text-sm md:text-base font-medium transition-all duration-300 ${
-                    !companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)
-                      ? 'bg-gray-400/90 cursor-not-allowed text-white'
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-xl'
-                  } flex items-center justify-center gap-3`}
-                  tabIndex={5}
+                  onClick={() => {
+                    console.log("Opening crypto preferences modal with:", {
+                      walletAddress: yodlUserData?.address || walletAddress || "", 
+                      selectedTokens, 
+                      selectedChains
+                    });
+                    setShowCryptoModal(true);
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
-                  {preferencesSet ? 'Update Payment Settings' : 'Set Payment Settings'}
+                  Set Payment Preferences
                 </button>
               </Tooltip>
 
@@ -975,20 +976,23 @@ function App() {
         {showCryptoModal && (
           <CryptoPreferencesModal
             isOpen={showCryptoModal}
-            onClose={() => setShowCryptoModal(false)}
+            onClose={() => {
+              console.log("Closing crypto modal");
+              setShowCryptoModal(false);
+            }}
             onSave={(address, tokens, chains) => {
               console.log('Saving preferences:', { address, tokens, chains });
-              // Update preferences
               if (address) setWalletAddress(address);
               setSelectedTokens(tokens);
               setSelectedChains(chains);
               setPreferencesSet(true);
+              setShowCryptoModal(false);
             }}
-            walletAddress={yodlUserData?.address || walletAddress}
+            walletAddress={yodlUserData?.address || walletAddress || ""}
             setWalletAddress={setWalletAddress}
-            selectedTokens={selectedTokens}
+            selectedTokens={selectedTokens || ['all']}
             setSelectedTokens={setSelectedTokens}
-            selectedChains={selectedChains}
+            selectedChains={selectedChains || ['all']}
             setSelectedChains={setSelectedChains}
           />
         )}
