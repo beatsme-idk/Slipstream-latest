@@ -8,6 +8,7 @@ import { useYodlAuth } from './hooks/useYodlAuth';
 import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
+import { yodlSDK, runningInYodlIframe, getYodlUserData } from './lib/yodlSDK';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -89,6 +90,8 @@ function App() {
   const { address: walletAddress, isConnecting } = useAccount();
   const [selectedTokens, setSelectedTokens] = useState<string[]>(['all']);
   const [selectedChains, setSelectedChains] = useState<string[]>(['all']);
+  const [isYodlInitialized, setIsYodlInitialized] = useState(false);
+  const [yodlUserData, setYodlUserData] = useState(null);
 
   const currencySymbols = {
     CHF: 'CHF',
@@ -263,44 +266,67 @@ function App() {
     }
   }, [userData]);
 
-  // Add this at the beginning of your App component, right after state declarations
+  // ===== YODL INTEGRATION =====
   useEffect(() => {
-    // Log when this effect runs
-    console.log("Running effect to set company info from token");
-    
-    // Get token directly from URL
-    const urlToken = new URLSearchParams(window.location.search).get('token');
-    
-    if (urlToken) {
-      console.log("Found token in URL, attempting to decode");
+    async function initializeYodl() {
+      console.log('Initializing Yodl integration...');
+      console.log('Running in iframe:', runningInYodlIframe);
       
       try {
-        // Decode the token manually without verification
-        const parts = urlToken.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          console.log("Decoded token payload:", payload);
+        // First check if we have a token in the URL
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+        console.log('Token from URL:', urlToken ? 'Present (not showing full token)' : 'None');
+        
+        if (urlToken) {
+          const userData = await getYodlUserData(urlToken);
+          console.log('User data from token:', userData);
           
-          // Set company info directly from token
-          if (payload.ens || payload.sub) {
-            console.log("Setting company info to:", payload.ens || payload.sub);
-            setCompanyInfo({
-              details: payload.ens || payload.sub
-            });
+          if (userData) {
+            setYodlUserData(userData);
             
-            // Also set preferences if available
-            if (payload.tokens || payload.chains) {
-              setSelectedTokens(payload.tokens || ['all']);
-              setSelectedChains(payload.chains || ['all']);
-              setPreferencesSet(true);
+            // Set company info from user data
+            if (userData.ensName || userData.address) {
+              console.log('Setting company info to:', userData.ensName || userData.address);
+              setCompanyInfo({
+                details: userData.ensName || userData.address
+              });
+            }
+            
+            // Set token preferences
+            if (userData.tokens) {
+              console.log('Setting tokens:', userData.tokens);
+              setSelectedTokens(userData.tokens);
+            }
+            
+            // Set chain preferences
+            if (userData.chains) {
+              console.log('Setting chains:', userData.chains);
+              setSelectedChains(userData.chains);
             }
           }
         }
+        
+        setIsYodlInitialized(true);
       } catch (error) {
-        console.error("Error decoding token:", error);
+        console.error('Error initializing Yodl:', error);
+        setIsYodlInitialized(true); // Still mark as initialized to prevent blocking the UI
       }
     }
-  }, []); // Empty dependency array so this runs once on mount
+
+    initializeYodl();
+  }, []);
+  
+  // Add detailed logging for debugging
+  useEffect(() => {
+    console.log('Current state:', {
+      companyInfo,
+      selectedTokens,
+      selectedChains,
+      isYodlInitialized,
+      yodlUserData,
+      inIframe: runningInYodlIframe
+    });
+  }, [companyInfo, selectedTokens, selectedChains, isYodlInitialized, yodlUserData]);
 
   const addItem = () => {
     if (isReadOnly) return;
@@ -950,8 +976,15 @@ function App() {
           <CryptoPreferencesModal
             isOpen={showCryptoModal}
             onClose={() => setShowCryptoModal(false)}
-            onSave={handlePreferencesSave}
-            walletAddress={userData?.address || walletAddress}
+            onSave={(address, tokens, chains) => {
+              console.log('Saving preferences:', { address, tokens, chains });
+              // Update preferences
+              if (address) setWalletAddress(address);
+              setSelectedTokens(tokens);
+              setSelectedChains(chains);
+              setPreferencesSet(true);
+            }}
+            walletAddress={yodlUserData?.address || walletAddress}
             setWalletAddress={setWalletAddress}
             selectedTokens={selectedTokens}
             setSelectedTokens={setSelectedTokens}

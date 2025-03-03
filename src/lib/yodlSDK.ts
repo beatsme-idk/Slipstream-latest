@@ -1,12 +1,48 @@
-import YappSDK from '@yodlpay/yapp-sdk';
+import YappSDK, { isInIframe } from '@yodlpay/yapp-sdk';
 
-// Initialize the SDK with your domain and public key
+// Initialize the SDK with your domain
 export const yodlSDK = new YappSDK({
-  ensName: import.meta.env.VITE_YODL_ENS_NAME,
-  // Uncomment if you have a specific origin or public key
-  origin: "https://yodl.me", // Make sure this is set
-  // publicKey: import.meta.env.VITE_YODL_PUBLIC_KEY,
+  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth', // Make sure this is set in your .env
+  origin: "https://yodl.me",
 });
+
+// Helper to detect if we're in an iframe
+export const runningInYodlIframe = isInIframe();
+
+// Parse and validate a JWT token
+export async function getYodlUserData(token) {
+  if (!token) return null;
+  
+  try {
+    const payload = await yodlSDK.verify(token);
+    console.log('Verified token payload:', payload);
+    return {
+      address: payload.sub,
+      ensName: payload.ens,
+      tokens: payload.tokens || ['all'],
+      chains: payload.chains || ['all']
+    };
+  } catch (err) {
+    console.error('Failed to verify token:', err);
+    // Fallback: try to parse the token without verification
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('Fallback token parsing:', payload);
+        return {
+          address: payload.sub,
+          ensName: payload.ens,
+          tokens: payload.tokens || ['all'],
+          chains: payload.chains || ['all']
+        };
+      }
+    } catch (e) {
+      console.error('Failed to parse token:', e);
+    }
+    return null;
+  }
+}
 
 // Helper function to validate JWT token
 export async function validateYodlToken(token: string | null) {
