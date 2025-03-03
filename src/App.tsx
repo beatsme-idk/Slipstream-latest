@@ -692,7 +692,7 @@ function App() {
                   />
                   <div className="col-span-5 md:col-span-3 relative">
                     <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm md:text-base opacity-75`}>
-                      {currencySymbols[selectedCurrency]}
+                      {currencySymbols[selectedCurrency as keyof typeof currencySymbols]}
                     </span>
                     <input
                       type="text"
