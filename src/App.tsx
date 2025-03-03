@@ -454,6 +454,12 @@ function App() {
           tokens: userData.preferences?.tokens || [],
           chains: userData.preferences?.chains || [],
         },
+      });
+
+      // Handle successful payment
+      setIsPaid(true);
+      setPaymentTimestamp(new Date().toISOString());
+      setTxHash(response.txHash);
     } catch (error) {
       console.error('Payment failed:', error);
       setShowPaymentModal(false);
@@ -507,23 +513,12 @@ function App() {
     }
   }, []);
 
-  // Replace the existing loading check with this more robust version
-  // This should be placed before the main return statement
-  if (isLoadingYodl) {
-    console.log('Showing loading indicator because isLoadingYodl =', isLoadingYodl);
+  // Render a loading indicator only if we're actually loading Yodl data
+  if (isLoadingYodl && token) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <p className="text-indigo-500 text-center">Loading user data...</p>
-        <p className="text-gray-500 text-sm mt-2 text-center">
-          {token ? 'Verifying your credentials...' : 'Waiting for authentication...'}
-        </p>
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg max-w-md text-center">
-            <p className="font-semibold">Error:</p>
-            <p>{error}</p>
-          </div>
-        )}
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <p className="ml-3 text-indigo-500">Loading user data...</p>
       </div>
     );
   }
