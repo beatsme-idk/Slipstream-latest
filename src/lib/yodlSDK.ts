@@ -4,7 +4,7 @@ import YappSDK from '@yodlpay/yapp-sdk';
 export const yodlSDK = new YappSDK({
   ensName: import.meta.env.VITE_YODL_ENS_NAME,
   // Uncomment if you have a specific origin or public key
-  // origin: import.meta.env.VITE_YODL_ORIGIN,
+  origin: "https://yodl.me", // Make sure this is set
   // publicKey: import.meta.env.VITE_YODL_PUBLIC_KEY,
 });
 
@@ -15,9 +15,12 @@ export async function validateYodlToken(token: string | null) {
   }
 
   try {
+    console.log('Validating token with Yodl SDK...');
     const payload = await yodlSDK.verify(token);
+    console.log('Token validation successful:', payload);
     return payload;
   } catch (error: any) {
+    console.error('Token validation failed:', error);
     if (error.name === 'JWTAudError') {
       throw new Error('Token was issued for a different Yapp');
     }

@@ -40,6 +40,15 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
       }
     }, []); // Run only on mount
   
+    // Add this useEffect for debugging
+    useEffect(() => {
+      console.log('CryptoPreferencesModal props:', {
+        walletAddress,
+        selectedTokens,
+        selectedChains
+      });
+    }, [walletAddress, selectedTokens, selectedChains]);
+  
     const isValidInput = (input: string): boolean => {
       // Check if empty
       if (!input) return true;
@@ -139,7 +148,7 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
   
     return (
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4 z-50"
+        className={`fixed inset-0 z-50 ${isOpen ? 'block' : 'hidden'}`}
         onClick={handleBackdropClick}
       >
         <div 

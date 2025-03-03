@@ -101,11 +101,15 @@ function App() {
 
   const [invoiceId, setInvoiceId] = useState<string>(() => uuidv4());
 
-  const { userData, isLoading: isLoadingYodl, error } = useYodlAuth();
+  const { userData, isLoading: isLoadingYodl, error, token } = useYodlAuth();
 
-  console.log('User Data:', userData);
-  console.log('Loading:', isLoadingYodl);
-  console.log('Error:', error);
+  // Add these console logs to help with debugging
+  useEffect(() => {
+    console.log('User Data in App:', userData);
+    console.log('Loading state:', isLoadingYodl);
+    console.log('Error state:', error);
+    console.log('Token:', token);
+  }, [userData, isLoadingYodl, error, token]);
 
   // URL parameter handling
   useEffect(() => {
@@ -235,13 +239,18 @@ function App() {
   // Update the useEffect that handles user data
   useEffect(() => {
     if (userData) {
+      console.log('Setting company info with:', userData.ensName || userData.address);
+      
       // Prepopulate company info with ENS name or address
       setCompanyInfo({
         details: userData.ensName || userData.address
       });
 
-      // Set preferences from chain data
+      // Set preferences from user data
       if (userData.preferences) {
+        console.log('Setting tokens:', userData.preferences.tokens);
+        console.log('Setting chains:', userData.preferences.chains);
+        
         setSelectedTokens(userData.preferences.tokens);
         setSelectedChains(userData.preferences.chains);
         setPreferencesSet(true);
@@ -894,7 +903,7 @@ function App() {
             isOpen={showCryptoModal}
             onClose={() => setShowCryptoModal(false)}
             onSave={handlePreferencesSave}
-            walletAddress={walletAddress}
+            walletAddress={userData?.address || walletAddress}
             setWalletAddress={setWalletAddress}
             selectedTokens={selectedTokens}
             setSelectedTokens={setSelectedTokens}
