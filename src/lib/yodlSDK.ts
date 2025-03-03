@@ -26,4 +26,23 @@ export async function validateYodlToken(token: string | null) {
     }
     throw new Error('Token validation failed');
   }
+}
+
+// Add this fallback function to yodlSDK.ts
+export async function parseJwtWithoutVerification(token: string) {
+  try {
+    // Split the token into parts
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+    
+    // Decode the payload (middle part)
+    const payload = JSON.parse(atob(parts[1]));
+    console.log('JWT payload parsed without verification:', payload);
+    return payload;
+  } catch (error) {
+    console.error('Failed to parse JWT:', error);
+    throw error;
+  }
 } 

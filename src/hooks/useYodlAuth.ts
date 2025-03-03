@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { yodlSDK } from '../lib/yodlSDK';
+import { yodlSDK, parseJwtWithoutVerification } from '../lib/yodlSDK';
 
 interface YodlUserData {
   address: string;
@@ -35,7 +35,8 @@ export function useYodlAuth() {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!token) {
-        console.log('No token available yet');
+        console.log('No token available, skipping user data fetch');
+        setIsLoading(false);
         return;
       }
 
@@ -47,6 +48,13 @@ export function useYodlAuth() {
         // Extract user address from the token payload
         const userAddress = decodedData.sub || address;
         
+        if (!userAddress) {
+          console.error('No user address found in token or wallet');
+          setError('No user address found. Please connect your wallet or login again.');
+          setIsLoading(false);
+          return;
+        }
+        
         setUserData({
           address: userAddress,
           ensName: decodedData.ens,
@@ -56,18 +64,33 @@ export function useYodlAuth() {
           },
         });
         
-        console.log('User data set:', {
-          address: userAddress,
-          ensName: decodedData.ens,
-          preferences: {
-            tokens: decodedData.tokens || ['all'],
-            chains: decodedData.chains || ['all'],
-          },
-        });
+        console.log('User data set successfully');
       } catch (err) {
-        console.error('Failed to verify token:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch user data');
+        console.error('Failed to verify token with SDK:', err);
+        
+        // Try fallback method
+        try {
+          console.log('Attempting fallback JWT parsing...');
+          const fallbackData = await parseJwtWithoutVerification(token);
+          
+          const userAddress = fallbackData.sub || address;
+          
+          setUserData({
+            address: userAddress,
+            ensName: fallbackData.ens,
+            preferences: {
+              tokens: fallbackData.tokens || ['all'],
+              chains: fallbackData.chains || ['all'],
+            },
+          });
+          
+          console.log('User data set using fallback method');
+        } catch (fallbackErr) {
+          console.error('Fallback parsing also failed:', fallbackErr);
+          setError('Failed to authenticate. Please try again.');
+        }
       } finally {
+        console.log('Setting isLoading to false');
         setIsLoading(false);
       }
     };

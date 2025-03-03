@@ -451,12 +451,9 @@ function App() {
         currency: selectedCurrency as PaymentConfig['currency'],
         memo: `Invoice ${invoiceId}`,
         preferences: {
-          tokens: userData.preferences.tokens,
-          chains: userData.preferences.chains,
+          tokens: userData.preferences?.tokens || [],
+          chains: userData.preferences?.chains || [],
         },
-      });
-
-      console.log('Payment initiated:', response);
     } catch (error) {
       console.error('Payment failed:', error);
       setShowPaymentModal(false);
@@ -473,6 +470,41 @@ function App() {
       .catch(error => {
         console.error('Failed to reach Yodl API:', error);
       });
+  }, []);
+
+  // Add this near the top of your App component, after state declarations
+  useEffect(() => {
+    console.log('App component mounted');
+    
+    // Log all important state variables
+    console.log({
+      userData,
+      isLoadingYodl,
+      error,
+      token,
+      companyInfo,
+      recipientInfo,
+      items,
+      selectedCurrency,
+      selectedTokens,
+      selectedChains,
+      preferencesSet
+    });
+    
+    // Check if we can access the Yodl API
+    fetch('https://yodl.me/api/health', { mode: 'no-cors' })
+      .then(() => console.log('Yodl API reachable'))
+      .catch(err => console.error('Yodl API unreachable:', err));
+      
+    // Check if the SDK is properly initialized
+    try {
+      console.log('Yodl SDK initialized with:', {
+        ensName: import.meta.env.VITE_YODL_ENS_NAME,
+        origin: 'https://yodl.me'
+      });
+    } catch (err) {
+      console.error('Error accessing environment variables:', err);
+    }
   }, []);
 
   // Render a loading indicator only if we're actually loading Yodl data
