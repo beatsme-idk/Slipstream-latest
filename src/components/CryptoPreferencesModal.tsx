@@ -25,8 +25,18 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
     selectedChains,
     setSelectedChains
 }) => {
-    if (!isOpen) return null;
-  
+    // Add debugging
+    console.log("CryptoPreferencesModal rendering with:", {
+        isOpen,
+        walletAddress,
+        selectedTokens,
+        selectedChains
+    });
+
+    // Make sure we have default values
+    const tokens = selectedTokens || ['all'];
+    const chains = selectedChains || ['all'];
+
     const AVAILABLE_TOKENS = ['All', 'USDC', 'USDT', 'USDGLO', 'USDM', 'DAI', 'CRVUSD'];
     const AVAILABLE_CHAINS = ['All', 'Ethereum', 'Arbitrum', 'Optimism', 'Base', 'Polygon'];
   
@@ -70,6 +80,7 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
     };
   
     const handleTokenSelection = (token: string): void => {
+      console.log("Token selected:", token);
       if (token === 'All') {
         setSelectedTokens(['All']);
       } else {
@@ -84,6 +95,7 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
     };
   
     const handleChainSelection = (chain: string): void => {
+      console.log("Chain selected:", chain);
       if (chain === 'All') {
         setSelectedChains(['All']);
       } else {
@@ -146,6 +158,9 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
       }
     };
   
+    // Make sure the modal is visible when isOpen is true
+    if (!isOpen) return null;
+
     return (
       <div 
         className={`fixed inset-0 z-50 ${isOpen ? 'block' : 'hidden'}`}

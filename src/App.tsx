@@ -263,6 +263,45 @@ function App() {
     }
   }, [userData]);
 
+  // Add this at the beginning of your App component, right after state declarations
+  useEffect(() => {
+    // Log when this effect runs
+    console.log("Running effect to set company info from token");
+    
+    // Get token directly from URL
+    const urlToken = new URLSearchParams(window.location.search).get('token');
+    
+    if (urlToken) {
+      console.log("Found token in URL, attempting to decode");
+      
+      try {
+        // Decode the token manually without verification
+        const parts = urlToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          console.log("Decoded token payload:", payload);
+          
+          // Set company info directly from token
+          if (payload.ens || payload.sub) {
+            console.log("Setting company info to:", payload.ens || payload.sub);
+            setCompanyInfo({
+              details: payload.ens || payload.sub
+            });
+            
+            // Also set preferences if available
+            if (payload.tokens || payload.chains) {
+              setSelectedTokens(payload.tokens || ['all']);
+              setSelectedChains(payload.chains || ['all']);
+              setPreferencesSet(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error decoding token:", error);
+      }
+    }
+  }, []); // Empty dependency array so this runs once on mount
+
   const addItem = () => {
     if (isReadOnly) return;
     setItems(prev => [...prev, {
@@ -302,42 +341,12 @@ function App() {
     setShowQRModal(true);
   };
 
-  const handlePreferencesSave = () => {
-    // Validate company and recipient details
-    const nameErrors = {
-      companyDetails: !companyInfo.details.trim(),
-      recipientDetails: !recipientInfo.details.trim()
-    };
-
-    // Validate items
-    const itemErrors: { [key: string]: { description: boolean; amount: boolean } } = {};
-    let hasItemErrors = false;
-    items.forEach(item => {
-      itemErrors[item.id] = {
-        description: !item.description.trim(),
-        amount: !item.amount.trim()
-      };
-      if (!item.description.trim() || !item.amount.trim()) {
-        hasItemErrors = true;
-      }
-    });
-
-    setFormErrors({
-      ...nameErrors,
-      items: itemErrors
-    });
-
-    if (!nameErrors.companyDetails && !nameErrors.recipientDetails && !hasItemErrors && 
-        walletAddress && selectedTokens.length > 0 && selectedChains.length > 0) {
-      setPreferencesSet(true);
-      setShowCryptoModal(false);
-    } else {
-      // Scroll to the first error if any
-      const firstError = document.querySelector('.error-field');
-      if (firstError) {
-        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+  const handlePreferencesSave = (address, tokens, chains) => {
+    console.log("Saving preferences:", { address, tokens, chains });
+    setWalletAddress(address);
+    setSelectedTokens(tokens);
+    setSelectedChains(chains);
+    setPreferencesSet(true);
   };
 
   const calculateGrandTotal = () => {
