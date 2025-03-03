@@ -328,6 +328,73 @@ function App() {
     });
   }, [companyInfo, selectedTokens, selectedChains, isYodlInitialized, yodlUserData]);
 
+  // Add this at the beginning of your App component to detect and use iframe data
+  useEffect(() => {
+    const detectYodlUser = async () => {
+      try {
+        console.log("Detecting Yodl user data...");
+        
+        // Check if we're in an iframe
+        const inIframe = window !== window.parent;
+        console.log("Running in iframe:", inIframe);
+        
+        // Get token from URL
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+        console.log("Token in URL:", urlToken ? "Yes (not showing full token)" : "No");
+        
+        if (urlToken) {
+          // Try to decode the token
+          try {
+            // First try with the SDK
+            const decodedData = await yodlSDK.verify(urlToken);
+            console.log("Decoded token with SDK:", decodedData);
+            
+            // Use the ENS name or address from the token
+            const userIdentifier = decodedData.ens || decodedData.sub;
+            if (userIdentifier) {
+              console.log("Setting company info to:", userIdentifier);
+              setCompanyInfo({ details: userIdentifier });
+              
+              // Also set payment preferences if available
+              if (decodedData.tokens) setSelectedTokens(decodedData.tokens);
+              if (decodedData.chains) setSelectedChains(decodedData.chains);
+            }
+          } catch (sdkError) {
+            console.error("SDK verification failed:", sdkError);
+            
+            // Fallback: try basic JWT parsing
+            try {
+              const parts = urlToken.split('.');
+              if (parts.length === 3) {
+                const payload = JSON.parse(atob(parts[1]));
+                console.log("Fallback token parsing:", payload);
+                
+                const userIdentifier = payload.ens || payload.sub;
+                if (userIdentifier) {
+                  console.log("Setting company info to (fallback):", userIdentifier);
+                  setCompanyInfo({ details: userIdentifier });
+                  
+                  // Also set payment preferences if available
+                  if (payload.tokens) setSelectedTokens(payload.tokens);
+                  if (payload.chains) setSelectedChains(payload.chains);
+                }
+              }
+            } catch (parseError) {
+              console.error("Fallback parsing failed:", parseError);
+            }
+          }
+        } else {
+          console.log("No token found in URL");
+        }
+      } catch (error) {
+        console.error("Error detecting Yodl user:", error);
+      }
+    };
+    
+    // Run the detection immediately when the component mounts
+    detectYodlUser();
+  }, []); // Empty dependency array so this runs once on mount
+
   const addItem = () => {
     if (isReadOnly) return;
     setItems(prev => [...prev, {
