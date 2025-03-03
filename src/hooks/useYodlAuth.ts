@@ -23,6 +23,12 @@ export function useYodlAuth() {
     const urlToken = new URLSearchParams(window.location.search).get('token');
     console.log('JWT Token from URL:', urlToken);
     setToken(urlToken);
+    
+    // If no token is present, set loading to false immediately
+    if (!urlToken) {
+      console.log('No token in URL, setting loading to false');
+      setIsLoading(false);
+    }
   }, []);
 
   // Then, use the token to fetch user data

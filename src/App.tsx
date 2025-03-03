@@ -463,23 +463,24 @@ function App() {
     }
   };
 
-  // After loading and error checks
-  if (isLoadingYodl || isConnecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+  // Add this near the top of your App component
+  useEffect(() => {
+    // Simple network check
+    fetch('https://yodl.me/api/health')
+      .then(response => {
+        console.log('Yodl API health check:', response.status);
+      })
+      .catch(error => {
+        console.error('Failed to reach Yodl API:', error);
+      });
+  }, []);
 
-  // After error check
-  if (error) {
+  // Render a loading indicator only if we're actually loading Yodl data
+  if (isLoadingYodl && token) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Error</h1>
-          <p className="text-red-600">{error}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <p className="ml-3 text-indigo-500">Loading user data...</p>
       </div>
     );
   }
