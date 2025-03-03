@@ -1,10 +1,38 @@
-import YappSDK, { isInIframe } from '@yodlpay/yapp-sdk';
+import YappSDK from '@yodlpay/yapp-sdk';
 
 // Initialize the SDK with your domain
 export const yodlSDK = new YappSDK({
-  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth', // Make sure this is set in your .env
+  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth',
   origin: "https://yodl.me",
 });
+
+// Get token from URL
+export function getTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get('token');
+}
+
+// Basic function to extract user data from token without verification
+export function extractUserDataFromToken(token) {
+  if (!token) return null;
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    console.log('Extracted token payload:', payload);
+    
+    return {
+      address: payload.sub,
+      ensName: payload.ens,
+      tokens: payload.tokens || ['all'],
+      chains: payload.chains || ['all']
+    };
+  } catch (error) {
+    console.error('Failed to extract user data from token:', error);
+    return null;
+  }
+}
 
 // Helper to detect if we're in an iframe
 export const runningInYodlIframe = isInIframe();

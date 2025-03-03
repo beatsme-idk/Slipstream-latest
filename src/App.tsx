@@ -8,7 +8,7 @@ import { useYodlAuth } from './hooks/useYodlAuth';
 import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
-import { yodlSDK, runningInYodlIframe, getYodlUserData } from './lib/yodlSDK';
+import { yodlSDK, runningInYodlIframe, getYodlUserData, getTokenFromUrl, extractUserDataFromToken } from './lib/yodlSDK';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -615,6 +615,30 @@ function App() {
     }
   }, []);
 
+  // Add this effect near the beginning of your App component
+  useEffect(() => {
+    // Simple, direct approach to get user data from token
+    const token = getTokenFromUrl();
+    
+    if (token) {
+      console.log('Found token in URL');
+      const userData = extractUserDataFromToken(token);
+      
+      if (userData) {
+        console.log('Extracted user data:', userData);
+        
+        // Set company info
+        if (userData.ensName || userData.address) {
+          setCompanyInfo({
+            details: userData.ensName || userData.address
+          });
+        }
+      }
+    } else {
+      console.log('No token found in URL');
+    }
+  }, []);
+
   // Render a loading indicator only if we're actually loading Yodl data
   if (isLoadingYodl && token) {
     return (
@@ -924,14 +948,7 @@ function App() {
                 show={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
               >
                 <button
-                  onClick={() => {
-                    console.log("Opening crypto preferences modal with:", {
-                      walletAddress: yodlUserData?.address || walletAddress || "", 
-                      selectedTokens, 
-                      selectedChains
-                    });
-                    setShowCryptoModal(true);
-                  }}
+                  onClick={() => setShowCryptoModal(true)}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Set Payment Preferences
@@ -1043,23 +1060,13 @@ function App() {
         {showCryptoModal && (
           <CryptoPreferencesModal
             isOpen={showCryptoModal}
-            onClose={() => {
-              console.log("Closing crypto modal");
-              setShowCryptoModal(false);
-            }}
-            onSave={(address, tokens, chains) => {
-              console.log('Saving preferences:', { address, tokens, chains });
-              if (address) setWalletAddress(address);
-              setSelectedTokens(tokens);
-              setSelectedChains(chains);
-              setPreferencesSet(true);
-              setShowCryptoModal(false);
-            }}
-            walletAddress={yodlUserData?.address || walletAddress || ""}
+            onClose={() => setShowCryptoModal(false)}
+            onSave={handlePreferencesSave}
+            walletAddress={walletAddress}
             setWalletAddress={setWalletAddress}
-            selectedTokens={selectedTokens || ['all']}
+            selectedTokens={selectedTokens}
             setSelectedTokens={setSelectedTokens}
-            selectedChains={selectedChains || ['all']}
+            selectedChains={selectedChains}
             setSelectedChains={setSelectedChains}
           />
         )}
