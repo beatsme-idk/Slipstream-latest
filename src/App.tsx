@@ -1109,7 +1109,7 @@ function App() {
                 ref={iframeRef}
                 src={getPaymentLink()}
                 className="w-full h-[500px] md:h-[600px] border-0"
-                allow="clipboard-write"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
             </div>
           </div>

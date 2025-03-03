@@ -2,7 +2,7 @@ import YappSDK, { isInIframe as isInIframeYodl } from '@yodlpay/yapp-sdk';
 
 // Initialize the SDK with your domain
 export const yodlSDK = new YappSDK({
-  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth',
+  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.eth',
   origin: "https://yodl.me",
 });
 
@@ -118,4 +118,34 @@ export async function parseJwtWithoutVerification(token: string) {
     console.error('Failed to parse JWT:', error);
     throw error;
   }
-} 
+}
+
+// Add a healthCheck function with better error handling
+export async function checkYodlApiHealth() {
+  try {
+    const response = await fetch('https://yodl.me/api/health', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Short timeout since it's just a health check
+      signal: AbortSignal.timeout(3000) 
+    });
+    
+    if (response.ok) {
+      console.log('Yodl API is healthy');
+      return true;
+    } else {
+      console.log(`Yodl API health check returned status: ${response.status}`);
+      return false;
+    }
+  } catch (error) {
+    console.log('Yodl API health check error:', error.message);
+    return false;
+  }
+}
+
+// Don't make the health check blocking
+checkYodlApiHealth().then(isHealthy => {
+  console.log('Yodl API health status:', isHealthy ? 'Healthy' : 'Unhealthy');
+}); 
