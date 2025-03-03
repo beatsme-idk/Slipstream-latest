@@ -1,10 +1,22 @@
-import YappSDK from '@yodlpay/yapp-sdk';
+import YappSDK, { isInIframe as isInIframeYodl } from '@yodlpay/yapp-sdk';
 
 // Initialize the SDK with your domain
 export const yodlSDK = new YappSDK({
   ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth',
   origin: "https://yodl.me",
 });
+
+// Properly export the isInIframe function from the SDK
+export const isInIframe = isInIframeYodl;
+
+// Helper function to detect if we're running in an iframe
+export function runningInIframe() {
+  try {
+    return window !== window.parent;
+  } catch (e) {
+    return true; // If we can't access window.parent, we're in an iframe
+  }
+}
 
 // Get token from URL
 export function getTokenFromUrl() {
@@ -33,9 +45,6 @@ export function extractUserDataFromToken(token) {
     return null;
   }
 }
-
-// Helper to detect if we're in an iframe
-export const runningInYodlIframe = isInIframe();
 
 // Parse and validate a JWT token
 export async function getYodlUserData(token) {

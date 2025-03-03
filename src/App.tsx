@@ -8,7 +8,7 @@ import { useYodlAuth } from './hooks/useYodlAuth';
 import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
-import { yodlSDK, runningInYodlIframe, getYodlUserData, getTokenFromUrl, extractUserDataFromToken } from './lib/yodlSDK';
+import { yodlSDK, runningInYodlIframe, getYodlUserData, getTokenFromUrl, extractUserDataFromToken, isInIframe } from './lib/yodlSDK';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -617,7 +617,12 @@ function App() {
 
   // Add this effect near the beginning of your App component
   useEffect(() => {
-    // Simple, direct approach to get user data from token
+    // Detect iframe status
+    const inIframe = runningInIframe();
+    console.log('Running in iframe:', inIframe);
+    console.log('Is in Yodl iframe (SDK method):', isInIframe());
+    
+    // Get user data from token if available
     const token = getTokenFromUrl();
     
     if (token) {
@@ -629,13 +634,32 @@ function App() {
         
         // Set company info
         if (userData.ensName || userData.address) {
+          console.log('Setting company info to:', userData.ensName || userData.address);
           setCompanyInfo({
             details: userData.ensName || userData.address
           });
         }
+        
+        // Set payment preferences
+        if (userData.tokens) {
+          console.log('Setting tokens to:', userData.tokens);
+          setSelectedTokens(userData.tokens);
+        }
+        
+        if (userData.chains) {
+          console.log('Setting chains to:', userData.chains);
+          setSelectedChains(userData.chains);
+        }
+        
+        // If we have a wallet address from the token
+        if (userData.address) {
+          setWalletAddress(userData.address);
+        }
       }
     } else {
-      console.log('No token found in URL');
+      console.log('No token found in URL - running in standalone mode');
+      // In standalone mode, the user will need to set everything manually
+      // We don't need to do anything special here
     }
   }, []);
 
