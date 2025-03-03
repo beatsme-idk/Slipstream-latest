@@ -18,18 +18,27 @@ export function runningInIframe() {
   }
 }
 
-// Get token from URL
+// Get token from URL - improve with better null handling
 export function getTokenFromUrl() {
-  return new URLSearchParams(window.location.search).get('token');
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  console.log('Token from URL:', token ? 'Present (not showing full token)' : 'None');
+  return token;
 }
 
-// Basic function to extract user data from token without verification
-export function extractUserDataFromToken(token) {
-  if (!token) return null;
+// Extract user data from token with better type safety
+export function extractUserDataFromToken(token: string | null) {
+  if (!token) {
+    console.log('No token provided to extract user data');
+    return null;
+  }
   
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.error('Invalid JWT format');
+      return null;
+    }
     
     const payload = JSON.parse(atob(parts[1]));
     console.log('Extracted token payload:', payload);
@@ -46,11 +55,15 @@ export function extractUserDataFromToken(token) {
   }
 }
 
-// Parse and validate a JWT token
-export async function getYodlUserData(token) {
-  if (!token) return null;
+// Parse and validate a JWT token with better error messages and consistent return structure
+export async function getYodlUserData(token: string | null) {
+  if (!token) {
+    console.log('No token provided to getYodlUserData');
+    return null;
+  }
   
   try {
+    console.log('Verifying token with Yodl SDK...');
     const payload = await yodlSDK.verify(token);
     console.log('Verified token payload:', payload);
     return {
@@ -60,24 +73,9 @@ export async function getYodlUserData(token) {
       chains: payload.chains || ['all']
     };
   } catch (err) {
-    console.error('Failed to verify token:', err);
+    console.error('Failed to verify token with SDK:', err);
     // Fallback: try to parse the token without verification
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        console.log('Fallback token parsing:', payload);
-        return {
-          address: payload.sub,
-          ensName: payload.ens,
-          tokens: payload.tokens || ['all'],
-          chains: payload.chains || ['all']
-        };
-      }
-    } catch (e) {
-      console.error('Failed to parse token:', e);
-    }
-    return null;
+    return extractUserDataFromToken(token); 
   }
 }
 

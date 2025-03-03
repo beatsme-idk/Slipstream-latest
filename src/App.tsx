@@ -242,27 +242,31 @@ function App() {
   // Update the useEffect that handles user data
   useEffect(() => {
     if (userData) {
-      console.log('Setting company info with:', userData.ensName || userData.address);
+      console.log('Setting company info with user data:', userData);
       
       // Prepopulate company info with ENS name or address
-      setCompanyInfo({
-        details: userData.ensName || userData.address
-      });
+      if (userData.ensName || userData.address) {
+        setCompanyInfo({
+          details: userData.ensName || userData.address
+        });
+        console.log('Set company info to:', userData.ensName || userData.address);
+      }
 
       // Set preferences from user data
       if (userData.preferences) {
-        console.log('Setting tokens:', userData.preferences.tokens);
-        console.log('Setting chains:', userData.preferences.chains);
+        console.log('Setting tokens from userData:', userData.preferences.tokens);
+        console.log('Setting chains from userData:', userData.preferences.chains);
         
         setSelectedTokens(userData.preferences.tokens);
         setSelectedChains(userData.preferences.chains);
-        setPreferencesSet(true);
-      } else {
-        // Set default preferences if none found
-        setSelectedTokens(['all']);
-        setSelectedChains(['all']);
-        setPreferencesSet(true);
+        setPreferencesSet(userData.preferences.tokens.length > 0 && userData.preferences.chains.length > 0);
+        
+        if (userData.address) {
+          setWalletAddress(userData.address);
+        }
       }
+    } else {
+      console.log('No user data available from useYodlAuth');
     }
   }, [userData]);
 
