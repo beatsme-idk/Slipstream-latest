@@ -27,6 +27,8 @@ export function useYodlAuth() {
       try {
         // Get the JWT token from the URL
         const token = new URLSearchParams(window.location.search).get('token');
+        // Log the token for debugging
+        console.log('JWT Token:', token);
         if (!token) {
           setError('No JWT token found in the URL');
           setIsLoading(false);
@@ -34,6 +36,8 @@ export function useYodlAuth() {
         }
 
         const decodedData = await yodlSDK.verify(token);
+        // Log the decoded data for debugging
+        console.log('Decoded User Data:', decodedData);
 
         // Set user data
         setUserData({
