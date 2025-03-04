@@ -1,73 +1,81 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { publicClient } from '../lib/wagmiConfig';
 
 interface YodlPreferences {
-  tokens?: string[];
-  chains?: string[];
+  address: string;
   ensName?: string;
-  address?: string;
+  tokens: string[];
+  chains: string[];
 }
 
 /**
- * Hook to fetch preferences for a specific Yodl address
- * @param ensNameOrAddress - The ENS name or Ethereum address to fetch preferences for
+ * Hook to fetch Yodl payment preferences for a given address or ENS name
+ * @param addressOrEns The address or ENS name to fetch preferences for
  * @returns Object containing the preferences and loading state
  */
-const useYodlPreferences = (ensNameOrAddress: string) => {
+function useYodlPreferences(addressOrEns: string) {
   const [preferences, setPreferences] = useState<YodlPreferences | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPreferences = async () => {
-      if (!ensNameOrAddress) {
+    async function fetchPreferences() {
+      if (!addressOrEns) {
         setIsLoading(false);
         return;
       }
 
       try {
         setIsLoading(true);
-        // Simulate API call - in production you would fetch from the Yodl API
-        // Example: const response = await fetch(`https://api.yodl.me/preferences/${ensNameOrAddress}`);
-        
-        // For now, return mock data based on the address
-        const mockData: Record<string, YodlPreferences> = {
-          'maradona.yodl.eth': {
-            tokens: ['USDT', 'USDC', 'ETH'],
-            chains: ['Ethereum', 'Arbitrum', 'Base'],
-            ensName: 'maradona.yodl.eth',
-            address: '0x1234567890abcdef1234567890abcdef12345678'
-          },
-          'tam.yodl.eth': {
-            tokens: ['USDC', 'DAI', 'ETH'],
-            chains: ['Ethereum', 'Polygon', 'Optimism'],
-            ensName: 'tam.yodl.eth',
-            address: '0xabcdef1234567890abcdef1234567890abcdef12'
-          }
-        };
+        console.log(`Fetching preferences for ${addressOrEns}...`);
 
-        // Wait a bit to simulate network request
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Resolve ENS name if needed
+        let resolvedAddress = addressOrEns;
+        if (addressOrEns.endsWith('.eth')) {
+          try {
+            const address = await publicClient.getEnsAddress({
+              name: addressOrEns,
+            });
+            if (address) {
+              resolvedAddress = address;
+              console.log(`Resolved ${addressOrEns} to ${resolvedAddress}`);
+            }
+          } catch (ensError) {
+            console.error('Error resolving ENS name:', ensError);
+          }
+        }
+
+        // Fetch preferences from Yodl API
+        const apiUrl = `${import.meta.env.VITE_YODL_API_URL || 'https://api.yodl.me'}/preferences/${resolvedAddress}`;
+        const response = await fetch(apiUrl);
         
-        const data = mockData[ensNameOrAddress] || {
-          tokens: ['ETH'],
-          chains: ['Ethereum'],
-          address: ensNameOrAddress
-        };
+        if (!response.ok) {
+          throw new Error(`Failed to fetch preferences: ${response.status}`);
+        }
         
-        setPreferences(data);
-        setError(null);
+        const data = await response.json();
+        console.log('Fetched preferences:', data);
+        
+        // Transform the data into our expected format
+        setPreferences({
+          address: resolvedAddress,
+          ensName: addressOrEns.endsWith('.eth') ? addressOrEns : undefined,
+          tokens: data.tokens || ['all'],
+          chains: data.chains || ['all'],
+        });
+        
       } catch (err) {
         console.error('Error fetching Yodl preferences:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch preferences'));
+        setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setIsLoading(false);
       }
-    };
+    }
 
     fetchPreferences();
-  }, [ensNameOrAddress]);
+  }, [addressOrEns]);
 
   return { preferences, isLoading, error };
-};
+}
 
 export default useYodlPreferences; 
