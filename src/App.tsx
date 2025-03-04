@@ -9,6 +9,7 @@ import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
 import { yodlSDK, getTokenFromUrl, extractUserDataFromToken, runningInIframe, isInIframe } from './lib/yodlSDK';
+import useYodlPreferences from './hooks/useYodlPreferences';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -676,6 +677,19 @@ function App() {
       </div>
     );
   }
+
+  // This is example on how to use the useYodlPreferences hook
+  const { preferences: preferences1 } = useYodlPreferences('maradona.yodl.eth');
+  const { preferences: preferences2 } = useYodlPreferences('tam.yodl.eth');
+
+  useEffect(() => {
+    if (preferences1) {
+      console.log('Maradona preferences:', preferences1);
+    }
+    if (preferences2) {
+      console.log('Tam preferences:', preferences2);
+    }
+  }, [preferences1, preferences2]);
 
   // Main content rendering
   return (
