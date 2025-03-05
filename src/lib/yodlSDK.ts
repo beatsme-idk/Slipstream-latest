@@ -1,9 +1,9 @@
 import YappSDK, { isInIframe as isInIframeYodl } from '@yodlpay/yapp-sdk';
 
-// Initialize the SDK with your domain
+// Initialize the SDK with your domain and production origin
 export const yodlSDK = new YappSDK({
   ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.eth',
-  origin: "https://yodl.me",
+  origin: "https://yodl.me/go", // Updated to production URL
 });
 
 // Properly export the isInIframe function from the SDK
