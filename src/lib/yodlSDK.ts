@@ -33,7 +33,17 @@ console.log('Initializing Yodl SDK with config:', config);
 // Create SDK instance with error handling
 let yodlSDK: YappSDK;
 try {
-  yodlSDK = new YappSDK(config);
+  // For Vite, use import.meta.env instead of process.env
+  const ensName = import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.yodl.eth';
+  const origin = import.meta.env.VITE_YODL_API_URL || 'https://yodl.me';
+  
+  console.log('Using ENS name:', ensName);
+  console.log('Using origin:', origin);
+  
+  yodlSDK = new YappSDK({
+    ensName: ensName,
+    origin: origin
+  });
   console.log('Yodl SDK initialized successfully');
 } catch (error) {
   console.error('Failed to initialize Yodl SDK:', error);

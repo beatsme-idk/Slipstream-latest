@@ -901,58 +901,31 @@ function App() {
               {!isPaid ? (
                 <button
                   onClick={() => {
+                    console.log("Payment button clicked");
                     // Use the Yodl SDK directly instead of opening a URL
                     const total = calculateGrandTotal();
-                    if (total <= 0 || !walletAddress) return;
+                    console.log("Total amount:", total);
+                    console.log("Wallet address:", walletAddress);
+                    
+                    if (total <= 0) {
+                      console.error("Invalid amount: Total must be greater than 0");
+                      return;
+                    }
+                    
+                    if (!walletAddress) {
+                      console.error("Invalid wallet address: No wallet address provided");
+                      return;
+                    }
                     
                     try {
+                      console.log("Opening payment modal");
                       setShowPaymentModal(true);
                       
                       // Create a redirect URL with the current invoice data
                       const redirectUrl = `${window.location.origin}${window.location.pathname}?data=${new URLSearchParams(window.location.search).get('data')}`;
+                      console.log("Redirect URL:", redirectUrl);
                       
-                      // Use the yodlSDK to request payment
-                      yodlSDK.requestPayment(walletAddress, {
-                        amount: total,
-                        currency: selectedCurrency as any, // Use type assertion to avoid type error
-                        memo: `Invoice ${invoiceId}`,
-                        redirectUrl: redirectUrl
-                      }).then(response => {
-                        console.log('Payment successful:', response);
-                        
-                        // Update the invoice with payment information
-                        const timestamp = new Date().toISOString();
-                        setIsPaid(true);
-                        setPaymentTimestamp(timestamp);
-                        setTxHash(response.txHash);
-                        
-                        // Update URL with payment information
-                        const currentParams = new URLSearchParams(window.location.search);
-                        const data = currentParams.get('data');
-                        if (data) {
-                          try {
-                            const decodedData = JSON.parse(decodeURIComponent(atob(data)));
-                            
-                            // Update the invoice data with payment status
-                            const updatedData = {
-                              ...decodedData,
-                              isPaid: true,
-                              paidAt: timestamp,
-                              txHash: response.txHash
-                            };
-                            
-                            // Re-encode the updated data
-                            const encodedData = btoa(encodeURIComponent(JSON.stringify(updatedData)));
-                            const newUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
-                            window.history.replaceState({}, '', newUrl);
-                          } catch (error) {
-                            console.error('Error updating invoice data:', error);
-                          }
-                        }
-                      }).catch(error => {
-                        console.error('Payment failed:', error);
-                        setShowPaymentModal(false);
-                      });
+                      // Don't call the SDK here, we'll call it from the modal
                     } catch (error) {
                       console.error('Error initiating payment:', error);
                       setShowPaymentModal(false);
@@ -1074,6 +1047,9 @@ function App() {
                 <p className="text-gray-700 dark:text-gray-300">
                   Recipient: {companyInfo.details}
                 </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Wallet Address: {walletAddress ? walletAddress.substring(0, 6) + '...' + walletAddress.substring(walletAddress.length - 4) : 'Not set'}
+                </p>
               </div>
               
               <div className="flex justify-end gap-3">
@@ -1085,51 +1061,73 @@ function App() {
                 </button>
                 <button
                   onClick={() => {
+                    console.log("Pay Now button clicked");
                     const total = calculateGrandTotal();
-                    if (total <= 0 || !walletAddress) return;
                     
-                    // Use the yodlSDK to request payment
-                    yodlSDK.requestPayment(walletAddress, {
+                    if (total <= 0) {
+                      console.error("Invalid amount: Total must be greater than 0");
+                      return;
+                    }
+                    
+                    if (!walletAddress) {
+                      console.error("Invalid wallet address: No wallet address provided");
+                      return;
+                    }
+                    
+                    console.log("Requesting payment with:", {
+                      walletAddress,
                       amount: total,
-                      currency: selectedCurrency as any,
+                      currency: selectedCurrency,
                       memo: `Invoice ${invoiceId}`,
                       redirectUrl: window.location.href
-                    }).then(response => {
-                      console.log('Payment successful:', response);
-                      
-                      // Update the invoice with payment information
-                      const timestamp = new Date().toISOString();
-                      setIsPaid(true);
-                      setPaymentTimestamp(timestamp);
-                      setTxHash(response.txHash);
-                      setShowPaymentModal(false);
-                      
-                      // Update URL with payment information
-                      const currentParams = new URLSearchParams(window.location.search);
-                      const data = currentParams.get('data');
-                      if (data) {
-                        try {
-                          const decodedData = JSON.parse(decodeURIComponent(atob(data)));
-                          
-                          // Update the invoice data with payment status
-                          const updatedData = {
-                            ...decodedData,
-                            isPaid: true,
-                            paidAt: timestamp,
-                            txHash: response.txHash
-                          };
-                          
-                          // Re-encode the updated data
-                          const encodedData = btoa(encodeURIComponent(JSON.stringify(updatedData)));
-                          const newUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
-                          window.history.replaceState({}, '', newUrl);
-                        } catch (error) {
-                          console.error('Error updating invoice data:', error);
-                        }
-                      }
-                    }).catch(error => {
-                      console.error('Payment failed:', error);
                     });
+                    
+                    // Use the yodlSDK to request payment
+                    try {
+                      yodlSDK.requestPayment(walletAddress, {
+                        amount: total,
+                        currency: selectedCurrency as any,
+                        memo: `Invoice ${invoiceId}`,
+                        redirectUrl: window.location.href
+                      }).then(response => {
+                        console.log('Payment successful:', response);
+                        
+                        // Update the invoice with payment information
+                        const timestamp = new Date().toISOString();
+                        setIsPaid(true);
+                        setPaymentTimestamp(timestamp);
+                        setTxHash(response.txHash);
+                        setShowPaymentModal(false);
+                        
+                        // Update URL with payment information
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const data = currentParams.get('data');
+                        if (data) {
+                          try {
+                            const decodedData = JSON.parse(decodeURIComponent(atob(data)));
+                            
+                            // Update the invoice data with payment status
+                            const updatedData = {
+                              ...decodedData,
+                              isPaid: true,
+                              paidAt: timestamp,
+                              txHash: response.txHash
+                            };
+                            
+                            // Re-encode the updated data
+                            const encodedData = btoa(encodeURIComponent(JSON.stringify(updatedData)));
+                            const newUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+                            window.history.replaceState({}, '', newUrl);
+                          } catch (error) {
+                            console.error('Error updating invoice data:', error);
+                          }
+                        }
+                      }).catch(error => {
+                        console.error('Payment failed:', error);
+                      });
+                    } catch (error) {
+                      console.error('Error initiating payment request:', error);
+                    }
                   }}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium"
                 >
