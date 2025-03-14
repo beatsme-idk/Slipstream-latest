@@ -4,8 +4,8 @@ import React, { useEffect } from 'react';
 interface CryptoPreferencesModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (paymentLink: string) => void;
-    walletAddress: string;
+    onSave: (address: string, tokens: string[], chains: string[]) => void;
+    walletAddress: string | undefined;
     setWalletAddress: (address: string) => void;
     selectedTokens: string[];
     setSelectedTokens: (tokens: string[]) => void;
@@ -140,7 +140,7 @@ export const CryptoPreferencesModal: React.FC<CryptoPreferencesModalProps> = ({
         console.log(`Generated payment link: ${paymentLink}`);
 
         // Call the onSave function with the payment link
-        onSave(paymentLink); // Pass the payment link to the onSave function
+        onSave(walletAddress, selectedTokens, selectedChains); // Pass the payment link to the onSave function
         onClose();
       }
     };

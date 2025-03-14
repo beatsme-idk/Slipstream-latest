@@ -44,6 +44,14 @@ const Tooltip = ({ children, text, show }: { children: React.ReactNode; text: st
   );
 };
 
+// Define a type for the user data
+interface YodlUserData {
+  address?: string;
+  ensName?: string;
+  tokens?: string[];
+  chains?: string[];
+}
+
 function App() {
   const { theme, toggleTheme } = useTheme();
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -88,13 +96,14 @@ function App() {
   });
 
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
-  const { address: walletAddress, isConnecting } = useAccount();
+  const { address, isConnecting } = useAccount();
+  const [walletAddress, setWalletAddress] = useState<string | undefined>(address);
   const [selectedTokens, setSelectedTokens] = useState<string[]>(['all']);
   const [selectedChains, setSelectedChains] = useState<string[]>(['all']);
   const [isYodlInitialized, setIsYodlInitialized] = useState(false);
-  const [yodlUserData, setYodlUserData] = useState(null);
+  const [yodlUserData, setYodlUserData] = useState<YodlUserData | null>(null);
 
-  const currencySymbols = {
+  const currencySymbols: Record<string, string> = {
     CHF: 'CHF',
     USD: '$',
     EUR: '€',
@@ -283,7 +292,7 @@ function App() {
         console.log('Token from URL:', urlToken ? 'Present (not showing full token)' : 'None');
         
         if (urlToken) {
-          const userData = await getYodlUserData(urlToken);
+          const userData = await extractUserDataFromToken(urlToken);
           console.log('User data from token:', userData);
           
           if (userData) {
@@ -377,6 +386,14 @@ function App() {
     detectYodlUser();
   }, []); // Empty dependency array so this runs once on mount
 
+  // Add this useEffect to update walletAddress when address changes
+  useEffect(() => {
+    if (address) {
+      console.log("Setting wallet address from useAccount:", address);
+      setWalletAddress(address);
+    }
+  }, [address]);
+
   const addItem = () => {
     if (isReadOnly) return;
     setItems(prev => [...prev, {
@@ -422,7 +439,7 @@ function App() {
     setShowQRModal(true);
   };
 
-  const handlePreferencesSave = (address, tokens, chains) => {
+  const handlePreferencesSave = (address: string, tokens: string[], chains: string[]) => {
     console.log("Saving preferences:", { address, tokens, chains });
     setWalletAddress(address);
     setSelectedTokens(tokens);
