@@ -7,8 +7,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useYodlAuth } from './hooks/useYodlAuth';
 import { useAccount } from 'wagmi';
 import { yodlPayment } from './services/yodlPayment';
-import type { PaymentConfig } from '@yodlpay/yapp-sdk';
-import { yodlSDK, getTokenFromUrl, extractUserDataFromToken, runningInIframe, isInIframe } from './lib/yodlSDK';
+import { yodlSDK, getTokenFromUrl, extractUserDataFromToken, runningInIframe, isInIframe, FiatCurrency } from './lib/yodlSDK';
 import useYodlPreferences from './hooks/useYodlPreferences';
 import { yodlService } from './lib/yodlSDK';
 
@@ -392,27 +391,33 @@ function App() {
     setItems(prev => prev.filter(item => item.id !== id));
   };
 
-  // Update handleShareClick to open the invoice URL directly
+  // Update handleShareClick to work without requiring preferencesSet
   const handleShareClick = () => {
-    if (!preferencesSet) return;
-  
+    // Remove the preferencesSet check that was preventing the button from working
+    // if (!preferencesSet) return;
+    
     const baseUrl = window.location.origin;
-  
+
     const invoiceData = {
       items,
       companyInfo,
       recipientInfo,
       currency: selectedCurrency,
-      walletAddress,
+      walletAddress: walletAddress || '', // Make sure walletAddress is never undefined
       selectedTokens,
       selectedChains,
       isPaid: false,
       invoiceId
     };
-  
+
+    // Add debugging to see what's happening
+    console.log('Generating invoice with data:', invoiceData);
+
     const encodedData = btoa(encodeURIComponent(JSON.stringify(invoiceData)));
     const uniqueInvoiceUrl = `${baseUrl}?data=${encodedData}`;
-  
+
+    console.log('Generated invoice URL:', uniqueInvoiceUrl);
+    
     setQRValue(uniqueInvoiceUrl);
     setShowQRModal(true);
   };
@@ -533,7 +538,7 @@ function App() {
       const response = await yodlPayment.requestPayment({
         recipientAddress: userData.address,
         amount: total,
-        currency: selectedCurrency as PaymentConfig['currency'],
+        currency: selectedCurrency as FiatCurrency,
         memo: `Invoice ${invoiceId}`,
         preferences: {
           tokens: userData.preferences?.tokens || [],
@@ -550,53 +555,6 @@ function App() {
       setShowPaymentModal(false);
     }
   };
-
-  // Add this near the top of your App component
-  useEffect(() => {
-    // Simple network check
-    fetch('https://yodl.me/api/health')
-      .then(response => {
-        console.log('Yodl API health check:', response.status);
-      })
-      .catch(error => {
-        console.error('Failed to reach Yodl API:', error);
-      });
-  }, []);
-
-  // Add this near the top of your App component, after state declarations
-  useEffect(() => {
-    console.log('App component mounted');
-    
-    // Log all important state variables
-    console.log({
-      userData,
-      isLoadingYodl,
-      error,
-      token,
-      companyInfo,
-      recipientInfo,
-      items,
-      selectedCurrency,
-      selectedTokens,
-      selectedChains,
-      preferencesSet
-    });
-    
-    // Check if we can access the Yodl API
-    fetch('https://yodl.me/api/health', { mode: 'no-cors' })
-      .then(() => console.log('Yodl API reachable'))
-      .catch(err => console.error('Yodl API unreachable:', err));
-      
-    // Check if the SDK is properly initialized
-    try {
-      console.log('Yodl SDK initialized with:', {
-        ensName: import.meta.env.VITE_YODL_ENS_NAME,
-        origin: 'https://yodl.me'
-      });
-    } catch (err) {
-      console.error('Error accessing environment variables:', err);
-    }
-  }, []);
 
   // Render a loading indicator only if we're actually loading Yodl data
   if (isLoadingYodl && token) {
@@ -916,7 +874,7 @@ function App() {
           {!isReadOnly ? (
             <>
               <Tooltip 
-                text="Set Payment Settings first" 
+                text="Fill in required fields first" 
                 show={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
               >
                 <button

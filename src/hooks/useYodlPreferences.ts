@@ -45,23 +45,16 @@ function useYodlPreferences(addressOrEns: string) {
           }
         }
 
-        // Fetch preferences from Yodl API
-        const apiUrl = `${import.meta.env.VITE_YODL_API_URL || 'https://api.yodl.me'}/preferences/${resolvedAddress}`;
-        const response = await fetch(apiUrl);
+        // Instead of fetching from API, use default values
+        // This prevents the ERR_NAME_NOT_RESOLVED errors
+        console.log('Using default preferences instead of API call');
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch preferences: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Fetched preferences:', data);
-        
-        // Transform the data into our expected format
+        // Set default preferences
         setPreferences({
           address: resolvedAddress,
           ensName: addressOrEns.endsWith('.eth') ? addressOrEns : undefined,
-          tokens: data.tokens || ['all'],
-          chains: data.chains || ['all'],
+          tokens: ['all'],
+          chains: ['all'],
         });
         
       } catch (err) {
