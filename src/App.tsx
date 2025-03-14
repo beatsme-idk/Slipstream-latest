@@ -10,6 +10,7 @@ import { yodlPayment } from './services/yodlPayment';
 import type { PaymentConfig } from '@yodlpay/yapp-sdk';
 import { yodlSDK, getTokenFromUrl, extractUserDataFromToken, runningInIframe, isInIframe } from './lib/yodlSDK';
 import useYodlPreferences from './hooks/useYodlPreferences';
+import { yodlService } from './lib/yodlSDK';
 
 // Direct image URL for the logo
 const LOGO_URL = 'https://i.ibb.co/zTczwP3B/logo.png';
@@ -333,64 +334,41 @@ function App() {
     });
   }, [companyInfo, selectedTokens, selectedChains, isYodlInitialized, yodlUserData]);
 
-  // Add this at the beginning of your App component to detect and use iframe data
+  // Update the useEffect for detecting Yodl user
   useEffect(() => {
     const detectYodlUser = async () => {
       try {
-        console.log("Detecting Yodl user data...");
-        
-        // Check if we're in an iframe
-        const inIframe = window !== window.parent;
-        console.log("Running in iframe:", inIframe);
-        
         // Get token from URL
-        const urlToken = new URLSearchParams(window.location.search).get('token');
-        console.log("Token in URL:", urlToken ? "Yes (not showing full token)" : "No");
-        
-        if (urlToken) {
-          // Try to decode the token
-          try {
-            // First try with the SDK
-            const decodedData = await yodlSDK.verify(urlToken);
-            console.log("Decoded token with SDK:", decodedData);
-            
-            // Use the ENS name or address from the token
-            const userIdentifier = decodedData.ens || decodedData.sub;
-            if (userIdentifier) {
-              console.log("Setting company info to:", userIdentifier);
-              setCompanyInfo({ details: userIdentifier });
-              
-              // Also set payment preferences if available
-              if (decodedData.tokens) setSelectedTokens(decodedData.tokens);
-              if (decodedData.chains) setSelectedChains(decodedData.chains);
-            }
-          } catch (sdkError) {
-            console.error("SDK verification failed:", sdkError);
-            
-            // Fallback: try basic JWT parsing
-            try {
-              const parts = urlToken.split('.');
-              if (parts.length === 3) {
-                const payload = JSON.parse(atob(parts[1]));
-                console.log("Fallback token parsing:", payload);
-                
-                const userIdentifier = payload.ens || payload.sub;
-                if (userIdentifier) {
-                  console.log("Setting company info to (fallback):", userIdentifier);
-                  setCompanyInfo({ details: userIdentifier });
-                  
-                  // Also set payment preferences if available
-                  if (payload.tokens) setSelectedTokens(payload.tokens);
-                  if (payload.chains) setSelectedChains(payload.chains);
-                }
-              }
-            } catch (parseError) {
-              console.error("Fallback parsing failed:", parseError);
-            }
-          }
-        } else {
-          console.log("No token found in URL");
+        const token = getTokenFromUrl();
+        if (!token) {
+          console.log('No Yodl token found in URL');
+          return;
         }
+
+        // Extract user data from token
+        const userData = await extractUserDataFromToken(token);
+        if (!userData) {
+          console.log('Failed to extract user data from token');
+          return;
+        }
+
+        // Set user data
+        console.log('Yodl user detected:', userData);
+        if (userData.address) {
+          setWalletAddress(userData.address);
+        }
+        
+        // Set tokens and chains if available
+        if (userData.tokens && userData.tokens.length > 0) {
+          setSelectedTokens(userData.tokens);
+        }
+        
+        if (userData.chains && userData.chains.length > 0) {
+          setSelectedChains(userData.chains);
+        }
+        
+        // Mark preferences as set
+        setPreferencesSet(true);
       } catch (error) {
         console.error("Error detecting Yodl user:", error);
       }
@@ -617,54 +595,6 @@ function App() {
       });
     } catch (err) {
       console.error('Error accessing environment variables:', err);
-    }
-  }, []);
-
-  // Add this effect near the beginning of your App component
-  useEffect(() => {
-    // Detect iframe status
-    const inIframe = runningInIframe();
-    console.log('Running in iframe:', inIframe);
-    console.log('Is in Yodl iframe (SDK method):', isInIframe());
-    
-    // Get user data from token if available
-    const token = getTokenFromUrl();
-    
-    if (token) {
-      console.log('Found token in URL');
-      const userData = extractUserDataFromToken(token);
-      
-      if (userData) {
-        console.log('Extracted user data:', userData);
-        
-        // Set company info
-        if (userData.ensName || userData.address) {
-          console.log('Setting company info to:', userData.ensName || userData.address);
-          setCompanyInfo({
-            details: userData.ensName || userData.address
-          });
-        }
-        
-        // Set payment preferences
-        if (userData.tokens) {
-          console.log('Setting tokens to:', userData.tokens);
-          setSelectedTokens(userData.tokens);
-        }
-        
-        if (userData.chains) {
-          console.log('Setting chains to:', userData.chains);
-          setSelectedChains(userData.chains);
-        }
-        
-        // If we have a wallet address from the token
-        if (userData.address) {
-          setWalletAddress(userData.address);
-        }
-      }
-    } else {
-      console.log('No token found in URL - running in standalone mode');
-      // In standalone mode, the user will need to set everything manually
-      // We don't need to do anything special here
     }
   }, []);
 
@@ -986,26 +916,14 @@ function App() {
           {!isReadOnly ? (
             <>
               <Tooltip 
-                text="Fill required fields first" 
+                text="Set Payment Settings first" 
                 show={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
               >
                 <button
-                  onClick={() => setShowCryptoModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Set Payment Preferences
-                </button>
-              </Tooltip>
-
-              <Tooltip 
-                text="Set Payment Settings first" 
-                show={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0) || !preferencesSet}
-              >
-                <button
                   onClick={handleShareClick}
-                  disabled={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0) || !preferencesSet}
+                  disabled={!companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)}
                   className={`w-full p-4 md:p-5 rounded-xl md:rounded-2xl text-sm md:text-base font-medium transition-all duration-300 ${
-                    !companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0) || !preferencesSet
+                    !companyInfo.details || !recipientInfo.details || !items.some(item => item.description && parseFloat(item.amount) > 0)
                       ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                       : theme === 'dark'
                         ? 'bg-gray-700 hover:bg-gray-600 text-white cursor-pointer'
