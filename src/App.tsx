@@ -899,10 +899,65 @@ function App() {
           ) : (
             <div className="flex flex-col md:flex-row gap-3 md:gap-4">
               {!isPaid ? (
-                <a
-                  href={getPaymentLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => {
+                    // Use the Yodl SDK directly instead of opening a URL
+                    const total = calculateGrandTotal();
+                    if (total <= 0 || !walletAddress) return;
+                    
+                    try {
+                      setShowPaymentModal(true);
+                      
+                      // Create a redirect URL with the current invoice data
+                      const redirectUrl = `${window.location.origin}${window.location.pathname}?data=${new URLSearchParams(window.location.search).get('data')}`;
+                      
+                      // Use the yodlSDK to request payment
+                      yodlSDK.requestPayment(walletAddress, {
+                        amount: total,
+                        currency: selectedCurrency as any, // Use type assertion to avoid type error
+                        memo: `Invoice ${invoiceId}`,
+                        redirectUrl: redirectUrl
+                      }).then(response => {
+                        console.log('Payment successful:', response);
+                        
+                        // Update the invoice with payment information
+                        const timestamp = new Date().toISOString();
+                        setIsPaid(true);
+                        setPaymentTimestamp(timestamp);
+                        setTxHash(response.txHash);
+                        
+                        // Update URL with payment information
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const data = currentParams.get('data');
+                        if (data) {
+                          try {
+                            const decodedData = JSON.parse(decodeURIComponent(atob(data)));
+                            
+                            // Update the invoice data with payment status
+                            const updatedData = {
+                              ...decodedData,
+                              isPaid: true,
+                              paidAt: timestamp,
+                              txHash: response.txHash
+                            };
+                            
+                            // Re-encode the updated data
+                            const encodedData = btoa(encodeURIComponent(JSON.stringify(updatedData)));
+                            const newUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+                            window.history.replaceState({}, '', newUrl);
+                          } catch (error) {
+                            console.error('Error updating invoice data:', error);
+                          }
+                        }
+                      }).catch(error => {
+                        console.error('Payment failed:', error);
+                        setShowPaymentModal(false);
+                      });
+                    } catch (error) {
+                      console.error('Error initiating payment:', error);
+                      setShowPaymentModal(false);
+                    }
+                  }}
                   className="group mx-auto w-full md:min-w-[600px] p-6 rounded-2xl text-base font-medium bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white transition-all flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
@@ -910,9 +965,9 @@ function App() {
                     Pay {currencySymbols[selectedCurrency]}{calculateGrandTotal().toLocaleString('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2
-                    })} to {walletAddress}
+                    })} to {companyInfo.details}
                   </div>
-                </a>
+                </button>
               ) : (
                 <div className="flex flex-col md:flex-row gap-2">
                   <div className="flex-1 p-4 rounded-lg text-base md:text-base font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-center gap-2">
@@ -998,13 +1053,89 @@ function App() {
               }
             }}
           >
-            <div className="w-full max-w-2xl bg-white rounded-xl md:rounded-2xl shadow-2xl overflow-hidden">
-              <iframe
-                ref={iframeRef}
-                src={getPaymentLink()}
-                className="w-full h-[500px] md:h-[600px] border-0"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              />
+            <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-2xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Complete Payment</h2>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <XCircle className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300 mb-2">
+                  Amount: {currencySymbols[selectedCurrency]}{calculateGrandTotal().toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Recipient: {companyInfo.details}
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const total = calculateGrandTotal();
+                    if (total <= 0 || !walletAddress) return;
+                    
+                    // Use the yodlSDK to request payment
+                    yodlSDK.requestPayment(walletAddress, {
+                      amount: total,
+                      currency: selectedCurrency as any,
+                      memo: `Invoice ${invoiceId}`,
+                      redirectUrl: window.location.href
+                    }).then(response => {
+                      console.log('Payment successful:', response);
+                      
+                      // Update the invoice with payment information
+                      const timestamp = new Date().toISOString();
+                      setIsPaid(true);
+                      setPaymentTimestamp(timestamp);
+                      setTxHash(response.txHash);
+                      setShowPaymentModal(false);
+                      
+                      // Update URL with payment information
+                      const currentParams = new URLSearchParams(window.location.search);
+                      const data = currentParams.get('data');
+                      if (data) {
+                        try {
+                          const decodedData = JSON.parse(decodeURIComponent(atob(data)));
+                          
+                          // Update the invoice data with payment status
+                          const updatedData = {
+                            ...decodedData,
+                            isPaid: true,
+                            paidAt: timestamp,
+                            txHash: response.txHash
+                          };
+                          
+                          // Re-encode the updated data
+                          const encodedData = btoa(encodeURIComponent(JSON.stringify(updatedData)));
+                          const newUrl = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+                          window.history.replaceState({}, '', newUrl);
+                        } catch (error) {
+                          console.error('Error updating invoice data:', error);
+                        }
+                      }
+                    }).catch(error => {
+                      console.error('Payment failed:', error);
+                    });
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium"
+                >
+                  Pay Now
+                </button>
+              </div>
             </div>
           </div>
         )}
