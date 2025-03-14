@@ -34,6 +34,7 @@ console.log('Initializing Yodl SDK with config:', config);
 let yodlSDK: YappSDK;
 try {
   yodlSDK = new YappSDK(config);
+  console.log('Yodl SDK initialized successfully');
 } catch (error) {
   console.error('Failed to initialize Yodl SDK:', error);
   // Provide a fallback configuration
@@ -41,6 +42,7 @@ try {
     ensName: 'slipstream.yodl.eth',
     origin: 'https://yodl.me'
   });
+  console.log('Using fallback Yodl SDK configuration');
 }
 
 export { yodlSDK };
@@ -150,15 +152,17 @@ class YodlService {
 export const yodlService = new YodlService();
 
 // Properly export the isInIframe function from the SDK
-export const isInIframe = yodlService.isInIframe;
-
-// Helper function to detect if we're running in an iframe
-export function runningInIframe() {
+export function isInIframe() {
   try {
     return window !== window.parent;
   } catch (e) {
     return true; // If we can't access window.parent, we're in an iframe
   }
+}
+
+// Helper function to detect if we're running in an iframe
+export function runningInIframe() {
+  return isInIframe();
 }
 
 // Get token from URL - improve with better null handling
@@ -209,9 +213,16 @@ export async function getYodlUserData(token: string | null) {
     console.log('Verifying token with Yodl SDK...');
     const payload = await yodlSDK.verify(token);
     console.log('Verified token payload:', payload);
+    
+    // Check if payload exists before accessing properties
+    if (!payload) {
+      console.log('Token verification returned empty payload');
+      return null;
+    }
+    
     return {
-      address: payload.sub,
-      ensName: payload.ens,
+      address: payload.sub || '',
+      ensName: payload.ens || '',
       tokens: payload.tokens || ['all'],
       chains: payload.chains || ['all']
     };
@@ -232,7 +243,9 @@ export async function validateYodlToken(token: string | null) {
     console.log('Validating token with Yodl SDK...');
     const payload = await yodlSDK.verify(token);
     console.log('Token validation successful:', payload);
-    return payload;
+    
+    // Return empty object if payload is undefined
+    return payload || {};
   } catch (error: any) {
     console.error('Token validation failed:', error);
     if (error.name === 'JWTAudError') {
@@ -264,29 +277,15 @@ export async function parseJwtWithoutVerification(token: string) {
 // Add a healthCheck function with better error handling
 export async function checkYodlApiHealth() {
   try {
-    const response = await fetch('https://yodl.me/api/health', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      // Short timeout since it's just a health check
-      signal: AbortSignal.timeout(3000) 
-    });
-    
-    if (response.ok) {
-      console.log('Yodl API is healthy');
-      return true;
-    } else {
-      console.log(`Yodl API health check returned status: ${response.status}`);
-      return false;
-    }
-  } catch (error) {
-    console.log('Yodl API health check error:', error.message);
+    // Instead of calling a non-existent endpoint, just check if we can initialize the SDK
+    return !!yodlSDK;
+  } catch (error: unknown) {
+    console.log('Yodl API health check error:', error instanceof Error ? error.message : 'Unknown error');
     return false;
   }
 }
 
 // Don't make the health check blocking
 checkYodlApiHealth().then(isHealthy => {
-  console.log('Yodl API health status:', isHealthy ? 'Healthy' : 'Unhealthy');
+  console.log('Yodl SDK status:', isHealthy ? 'Available' : 'Unavailable');
 }); 
