@@ -1,13 +1,143 @@
-import YappSDK, { isInIframe as isInIframeYodl } from '@yodlpay/yapp-sdk';
+import YappSDK from '@yodlpay/yapp-sdk';
 
-// Initialize the SDK with your domain and production origin
-export const yodlSDK = new YappSDK({
-  ensName: import.meta.env.VITE_YODL_ENS_NAME || 'slipstream.eth',
-  origin: "https://yodl.me/go", // Updated to production URL
-});
+// Define FiatCurrency enum since it's not exported from the SDK
+export enum FiatCurrency {
+  USD = 'USD',
+  EUR = 'EUR',
+  GBP = 'GBP',
+  THB = 'THB'
+}
+
+// Configuration type for the SDK
+interface YodlConfig {
+  ensName: string;
+  origin?: string;
+  publicKey?: string;
+}
+
+// Payment preferences type
+export interface PaymentPreferences {
+  tokens: string[];
+  chains: string[];
+  address?: string;
+}
+
+// Initialize SDK with environment variables
+const config: YodlConfig = {
+  ensName: process.env.NEXT_PUBLIC_YODL_ENS_NAME || '',
+  origin: process.env.NEXT_PUBLIC_YODL_ORIGIN,
+  publicKey: process.env.NEXT_PUBLIC_YODL_PUBLIC_KEY
+};
+
+// Create SDK instance
+export const yodlSDK = new YappSDK(config);
+
+// Payment response type
+export interface PaymentResponse {
+  txHash: string;
+  chainId: number;
+}
+
+// Payment request configuration type
+export interface PaymentRequest {
+  recipientAddress: string;
+  amount: number;
+  currency: FiatCurrency;
+  memo?: string;
+  preferences?: PaymentPreferences;
+  redirectUrl?: string;
+}
+
+// Yodl service class with enhanced functionality
+class YodlService {
+  private sdk: YappSDK;
+
+  constructor() {
+    this.sdk = yodlSDK;
+  }
+
+  // Validate JWT token
+  async validateToken(token: string): Promise<boolean> {
+    try {
+      const result = await this.sdk.verify(token);
+      return result !== undefined && result !== null;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
+    }
+  }
+
+  // Get connected wallet info from JWT token
+  async getConnectedWallet(token: string): Promise<string | null> {
+    try {
+      const isValid = await this.validateToken(token);
+      if (!isValid) {
+        throw new Error('Invalid token');
+      }
+      
+      // Use the token to get the wallet address
+      // Note: Implementation depends on your JWT structure
+      return null; // Placeholder - implement based on your JWT structure
+    } catch (error) {
+      console.error('Failed to get connected wallet:', error);
+      return null;
+    }
+  }
+
+  // Request payment with enhanced error handling
+  async requestPayment(config: PaymentRequest): Promise<PaymentResponse> {
+    try {
+      const response = await this.sdk.requestPayment(config.recipientAddress, {
+        amount: config.amount,
+        currency: config.currency,
+        memo: config.memo,
+        redirectUrl: config.redirectUrl || window.location.href
+      });
+
+      return response;
+    } catch (error: unknown) {
+      let errorMessage = 'Payment request failed';
+      
+      if (error instanceof Error) {
+        if (error.message === 'Payment was cancelled') {
+          errorMessage = 'Payment was cancelled by user';
+        } else if (error.message === 'Payment request timed out') {
+          errorMessage = 'Payment request timed out after 5 minutes';
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+  }
+
+  // Parse payment information from URL
+  parsePaymentFromUrl(): PaymentResponse | null {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const txHash = urlParams.get('txHash');
+      const chainId = urlParams.get('chainId');
+
+      if (txHash && chainId) {
+        return {
+          txHash,
+          chainId: parseInt(chainId, 10)
+        };
+      }
+      return null;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Failed to parse payment from URL:', error.message);
+      }
+      return null;
+    }
+  }
+}
+
+// Export singleton instance
+export const yodlService = new YodlService();
 
 // Properly export the isInIframe function from the SDK
-export const isInIframe = isInIframeYodl;
+export const isInIframe = yodlService.isInIframe;
 
 // Helper function to detect if we're running in an iframe
 export function runningInIframe() {
