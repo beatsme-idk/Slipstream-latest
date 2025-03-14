@@ -12,7 +12,6 @@ export enum FiatCurrency {
 interface YodlConfig {
   ensName: string;
   origin?: string;
-  publicKey?: string;
 }
 
 // Payment preferences type
@@ -24,13 +23,27 @@ export interface PaymentPreferences {
 
 // Initialize SDK with environment variables
 const config: YodlConfig = {
-  ensName: process.env.NEXT_PUBLIC_YODL_ENS_NAME || '',
-  origin: process.env.NEXT_PUBLIC_YODL_ORIGIN,
-  publicKey: process.env.NEXT_PUBLIC_YODL_PUBLIC_KEY
+  ensName: process.env.NEXT_PUBLIC_YODL_ENS_NAME || 'slipstream.yodl.eth',
+  origin: process.env.NEXT_PUBLIC_YODL_ORIGIN || 'https://yodl.me'
 };
 
-// Create SDK instance
-export const yodlSDK = new YappSDK(config);
+// Log configuration for debugging
+console.log('Initializing Yodl SDK with config:', config);
+
+// Create SDK instance with error handling
+let yodlSDK: YappSDK;
+try {
+  yodlSDK = new YappSDK(config);
+} catch (error) {
+  console.error('Failed to initialize Yodl SDK:', error);
+  // Provide a fallback configuration
+  yodlSDK = new YappSDK({
+    ensName: 'slipstream.yodl.eth',
+    origin: 'https://yodl.me'
+  });
+}
+
+export { yodlSDK };
 
 // Payment response type
 export interface PaymentResponse {
